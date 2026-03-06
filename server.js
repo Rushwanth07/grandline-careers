@@ -66,16 +66,34 @@ const authenticateUser = async (req, res, next) => {
     }
 };
 
+// Mock career data based on the One Piece theme
+const careers = [
+    { id: 1, role: "Shipwright Tech", icon: "🛠️", crew: "Franky", description: "Build the future of engineering.", skills: "Varying, Cybernetics", devilFruit: "None" },
+    { id: 2, role: "Navigator Finance", icon: "🧭", crew: "Nami", description: "Master the waves of the market.", skills: "Clima-Tact, Cartography", devilFruit: "None" },
+    { id: 3, role: "Doctor & Medic", icon: "🌸", crew: "Chopper", description: "Heal the world with cutting-edge tech.", skills: "Medicine, Rumble Ball", devilFruit: "Hito Hito no Mi" },
+    { id: 4, role: "Historian & Design", icon: "📖", crew: "Robin", description: "Uncover the secrets of creative design.", skills: "Archaeology, Espionage", devilFruit: "Hana Hana no Mi" },
+    { id: 5, role: "Education & Research", icon: "🧠", crew: "Vegapunk", description: "Push science and knowledge to the limits.", skills: "Innovation, Physics", devilFruit: "Nomi Nomi no Mi" },
+    { id: 6, role: "Business & Strategy", icon: "🏴", crew: "Crocodile", description: "Negotiate and build empires.", skills: "Logistics, Strategy", devilFruit: "Suna Suna no Mi" },
+    { id: 7, role: "Engineering", icon: "⭐", crew: "Usopp", description: "Invent gadgets with Sogeking precision.", skills: "Sniping, Crafting", devilFruit: "None" },
+    { id: 8, role: "Marketing & Media", icon: "💀", crew: "Brook", description: "Captivate audiences with performance.", skills: "Music, Fencing", devilFruit: "Yomi Yomi no Mi" }
+];
+
 // Career Endpoints (Protected by API Key)
 app.get('/api/careers', apiKeyMiddleware, (req, res) => {
-    // Mock career data based on the One Piece theme
-    const careers = [
-        { id: 1, role: "Shipwright Tech", icon: "🛠️", crew: "Franky", description: "Build the future of engineering." },
-        { id: 2, role: "Navigator Finance", icon: "🧭", crew: "Nami", description: "Master the waves of the market." },
-        { id: 3, role: "Doctor & Medic", icon: "🌸", crew: "Chopper", description: "Heal the world with cutting-edge tech." },
-        { id: 4, role: "Historian & Design", icon: "📖", crew: "Robin", description: "Uncover the secrets of creative design." }
-    ];
     res.json(careers);
+});
+
+// Search Endpoint (Protected by API Key)
+app.get('/api/search', apiKeyMiddleware, (req, res) => {
+    const query = req.query.q?.toLowerCase() || '';
+    const filteredResults = careers.filter(c =>
+        c.role.toLowerCase().includes(query) ||
+        c.crew.toLowerCase().includes(query) ||
+        c.description.toLowerCase().includes(query) ||
+        c.skills.toLowerCase().includes(query) ||
+        c.devilFruit.toLowerCase().includes(query)
+    );
+    res.json(filteredResults);
 });
 
 // User Profile (Protected)
