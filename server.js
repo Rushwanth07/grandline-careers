@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -41,8 +42,8 @@ const apiKeyMiddleware = (req, res, next) => {
     }
 };
 
-// Welcome Route
-app.get('/', (req, res) => {
+// Health Route
+app.get('/api/health', (req, res) => {
     res.json({
         message: "Welcome to the GrandLine Careers API! 🌊",
         status: "Running",
@@ -96,6 +97,69 @@ app.get('/api/search', apiKeyMiddleware, (req, res) => {
     res.json(filteredResults);
 });
 
+// Single Career Details Endpoint (Protected by API Key)
+app.get('/api/careers/:id', apiKeyMiddleware, (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    const career = careers.find(c => c.id === id);
+    if (!career) {
+        return res.status(404).json({ error: "Career path not found" });
+    }
+
+    // Add detailed roadmaps per career to give users actionable steps
+    const roadmaps = {
+        1: [
+            { title: "Learn the Basics", task: "Master HTML, CSS, and basic JavaScript. Understand how the web works." },
+            { title: "Master a Framework", task: "Learn React, Vue, or Angular to build complex interfaces." },
+            { title: "Backend Architecture", task: "Understand Node.js, databases, and API construction." },
+            { title: "Shipwright Certification", task: "Contribute to open source projects and build a portfolio." }
+        ],
+        2: [
+            { title: "Data Fundamentals", task: "Learn Excel, SQL, and basic statistical analysis." },
+            { title: "Financial Modeling", task: "Understand market trends and learn Python for data science." },
+            { title: "Navigation Tools", task: "Master BI tools like Tableau or PowerBI." },
+            { title: "Chart the Course", task: "Analyze complex datasets and present findings to stakeholders." }
+        ],
+        3: [
+            { title: "Anatomy of Code", task: "Understand system architecture and debug complex systems." },
+            { title: "Rumble Ball Scaling", task: "Learn cloud infrastructure (AWS/GCP) to scale applications." },
+            { title: "Preventative Care", task: "Master testing frameworks and CI/CD pipelines." },
+            { title: "The Cure", task: "Lead incident response and maintain high system availability." }
+        ],
+        4: [
+            { title: "Decipher the Poneglyphs", task: "Learn UX research methodologies and user psychology." },
+            { title: "Hana Hana Prototyping", task: "Master Figma and interaction design." },
+            { title: "Visual Storytelling", task: "Understand color theory, typography, and layout." },
+            { title: "The True History", task: "Create comprehensive design systems used by entire organizations." }
+        ],
+        5: [
+            { title: "Read the Manuals", task: "Read academic papers and understand core algorithms." },
+            { title: "Lab Experiments", task: "Build proofs of concept using new technologies." },
+            { title: "Publish Findings", task: "Write technical blogs and speak at conferences." },
+            { title: "Push Boundaries", task: "Develop new tools or frameworks for the community." }
+        ],
+        6: [
+            { title: "Understand the Market", task: "Analyze competitors and identify user needs." },
+            { title: "Build the Syndicate", task: "Learn cross-functional leadership and agile management." },
+            { title: "Execute the Plan", task: "Manage product backlogs, sprints, and roadmaps." },
+            { title: "Utopia", task: "Launch successful products that solve real problems." }
+        ],
+        7: [
+            { title: "Sniper Training", task: "Master low-level languages like C/C++ or Rust." },
+            { title: "Build Gadgets", task: "Understand IoT devices and embedded systems." },
+            { title: "Pop Greens", task: "Develop specialized tools for automation." },
+            { title: "Sogeking", task: "Become a crucial problem solver for edge-case technical issues." }
+        ],
+        8: [
+            { title: "Learn the Chords", task: "Understand marketing channels: SEO, Social, Email." },
+            { title: "Write the Lyrics", task: "Master copywriting and content strategy." },
+            { title: "The Performance", task: "Run campaigns and analyze conversion metrics." },
+            { title: "Soul King", task: "Build a brand that resonates with a global audience." }
+        ]
+    };
+
+    res.json({ ...career, roadmaps: roadmaps[id] || [] });
+});
+
 // User Profile (Protected)
 app.get('/api/profile', authenticateUser, async (req, res) => {
     try {
@@ -124,6 +188,14 @@ app.post('/api/profile', authenticateUser, async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
+});
+
+// Serve frontend in production
+app.use(express.static(path.join(__dirname, 'frontend/dist')));
+
+app.get('*', (req, res) => {
+    if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' });
+    res.sendFile(path.join(__dirname, 'frontend/dist/index.html'));
 });
 
 // Error handling
