@@ -1,33 +1,52 @@
-# GrandLine Careers - Backend 🏴‍☠️
+# GrandLine Careers
 
-The official backend for [GrandLine Careers](https://grandlinecareers.lovable.app). Powering the journey from student to Pirate King of the tech world.
+Express backend with a Vite/React frontend (served from `frontend/dist` in production).
 
-## 🚀 Features
-- **Firebase Auth Integration**: Securely manage your crew.
-- **Haki & Profile Management**: Track user skills (Haki) and career paths in Firestore.
-- **Career API**: Dynamic fetching of career paths inspired by the Straw Hat crew.
-- **Premium Security**: Protected routes using Firebase ID tokens.
+## Features
+- Public career APIs (`/api/careers`, `/api/careers/:id`, `/api/search`)
+- Multi-agent career guidance API (`/api/agents/career-guidance`)
+- Firebase-authenticated profile APIs (`/api/profile`)
+- CORS allowlist support via `ALLOWED_ORIGINS`
 
-## 🛠️ Getting Started
-
-### 1. Installation
+## Setup
+1. Install dependencies:
 ```bash
 npm install
+cd frontend && npm install
 ```
 
-### 2. Configuration
-Create a `.env` file based on `.env.example` and add your Firebase Service Account credentials.
+2. Create `.env` from `.env.example`.
 
-### 3. Run Locally
+3. Run backend locally:
 ```bash
 npm run dev
 ```
 
-## ⚓ API Endpoints
-- `GET /`: Welcome message.
-- `GET /api/careers`: Fetch all career paths.
-- `GET /api/profile`: (Protected) Fetch user Haki and profile.
-- `POST /api/profile`: (Protected) Update user profile.
+4. Run frontend locally (separate terminal):
+```bash
+cd frontend
+npm run dev
+```
 
-## 🌍 Deployment
-Recommended: [Vercel](https://vercel.com) or [Firebase Functions](https://firebase.google.com/docs/functions).
+## Environment Variables
+Backend (`.env`):
+- `PORT`
+- `ALLOWED_ORIGINS` (comma-separated)
+- `FIREBASE_PROJECT_ID`
+- `FIREBASE_CLIENT_EMAIL`
+- `FIREBASE_PRIVATE_KEY`
+
+Frontend (`frontend/.env`):
+- `VITE_BACKEND_URL` (optional; leave empty for same-origin deployment)
+
+## API Endpoints
+- `GET /api/health`
+- `GET /api/careers`
+- `GET /api/careers/:id`
+- `GET /api/search?q=...`
+- `POST /api/agents/career-guidance`
+- `GET /api/profile` (requires Firebase ID token)
+- `POST /api/profile` (requires Firebase ID token)
+
+## Deployment
+Recommended for fast delivery: deploy as a single Express app that serves the built frontend and API on the same domain.
