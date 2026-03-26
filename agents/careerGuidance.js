@@ -142,6 +142,200 @@ const buildMilestones = (primaryRole, missingSkills, quickWins, resources) => {
   ];
 };
 
+const HAKI_DIMENSIONS = {
+  'Observation Haki': {
+    explanation: 'How well you read opportunities, understand patterns, and identify what to improve next.',
+    keywords: [
+      'analysis',
+      'analytics',
+      'attention',
+      'communication',
+      'critical thinking',
+      'customer',
+      'data',
+      'debugging',
+      'design',
+      'problem solving',
+      'research',
+      'sql',
+      'strategy',
+      'testing',
+      'ux',
+      'writing',
+    ],
+  },
+  'Armament Haki': {
+    explanation: 'How strong your execution layer is when you need to build, ship, and prove your work.',
+    keywords: [
+      'api',
+      'automation',
+      'c++',
+      'cloud',
+      'css',
+      'figma',
+      'git',
+      'html',
+      'javascript',
+      'node',
+      'node.js',
+      'python',
+      'react',
+      'system design',
+      'tableau',
+      'wireframing',
+    ],
+  },
+  "Conqueror's Haki": {
+    explanation: 'How clearly you lead your own direction with goals, consistency, confidence, and visible output.',
+    keywords: [
+      'ambition',
+      'branding',
+      'growth',
+      'internship',
+      'interview',
+      'leadership',
+      'management',
+      'market research',
+      'metrics',
+      'planning',
+      'portfolio',
+      'presentation',
+      'product',
+      'roadmap',
+      'stakeholder communication',
+      'vision',
+    ],
+  },
+};
+
+const HAKI_LEVELS = [
+  { min: 0, max: 34, level: 'Rookie', rewardTitle: 'Training Scroll Unlocked', rewardMessage: 'You are early in the journey. Your reward is a focused starter plan that removes confusion and gives you a clean first target.' },
+  { min: 35, max: 49, level: 'Deck Cadet', rewardTitle: 'Consistency Badge', rewardMessage: 'You have the basics in place. Your reward is a structured weekly routine to turn scattered effort into visible progress.' },
+  { min: 50, max: 64, level: 'Rising Pirate', rewardTitle: 'Momentum Chest', rewardMessage: 'Your direction is becoming clearer. Your reward is a stronger mission set designed to convert effort into portfolio evidence.' },
+  { min: 65, max: 79, level: 'Elite Pirate', rewardTitle: 'Advanced Haki Crest', rewardMessage: 'You are building real strength. Your reward is a higher-value challenge set to accelerate role readiness.' },
+  { min: 80, max: 100, level: 'Emperor Candidate', rewardTitle: 'Captain Merit Reward', rewardMessage: 'You have a strong base. Your reward is a leadership-level progression plan focused on opportunities, interviews, and standout proof of work.' },
+];
+
+const clampScore = (value) => Math.max(0, Math.min(100, Math.round(value)));
+
+const countKeywordMatches = (tokens, keywords) =>
+  keywords.reduce((count, keyword) => {
+    const normalizedKeyword = normalizeText(keyword);
+    const found = tokens.some((token) => token.includes(normalizedKeyword) || normalizedKeyword.includes(token));
+    return found ? count + 1 : count;
+  }, 0);
+
+const getHakiLevelMeta = (score) =>
+  HAKI_LEVELS.find((item) => score >= item.min && score <= item.max) || HAKI_LEVELS[0];
+
+const buildHakiProgress = (input, profileTokens, primary, missingSkills, riskFlags) => {
+  const currentSkillCount = input.currentSkills.length;
+  const targetClarityBonus = input.targetRole ? 8 : 0;
+  const goalBonus = input.goal ? 6 : 0;
+  const weaknessPenalty = missingSkills.length >= 5 ? 8 : missingSkills.length >= 3 ? 4 : 0;
+
+  const hakiTypes = Object.entries(HAKI_DIMENSIONS).map(([name, config]) => {
+    const keywordMatches = countKeywordMatches(profileTokens, config.keywords);
+    const fitBonus = Math.round(primary.fitScore * 0.12);
+    const skillBonus = Math.min(18, currentSkillCount * 3);
+
+    const score = clampScore(24 + keywordMatches * 11 + fitBonus + skillBonus + targetClarityBonus + goalBonus - weaknessPenalty);
+    const status = score >= 75 ? 'Strong' : score >= 55 ? 'Growing' : 'Needs training';
+
+    const trainingSteps = missingSkills.slice(0, 3).map((skill, index) => {
+      if (name === 'Observation Haki') {
+        return index === 0
+          ? `Study ${skill} through one guided resource and write down what you learn.`
+          : `Practice ${skill} in a small exercise, then review what went wrong.`;
+      }
+
+      if (name === 'Armament Haki') {
+        return index === 0
+          ? `Build one small output that proves your ${skill} ability.`
+          : `Repeat ${skill} in a project task until it feels routine.`;
+      }
+
+      return index === 0
+        ? `Connect ${skill} to your target role and define one measurable result for this week.`
+        : `Turn ${skill} into visible proof by adding it to a project, case study, or portfolio entry.`;
+    });
+
+    return {
+      name,
+      score,
+      status,
+      explanation: config.explanation,
+      trainingSteps: trainingSteps.length > 0 ? trainingSteps : ['Keep following the roadmap and add one visible proof-of-work item this week.'],
+    };
+  });
+
+  const overallScore = clampScore(hakiTypes.reduce((total, type) => total + type.score, 0) / hakiTypes.length);
+  const levelMeta = getHakiLevelMeta(overallScore);
+  const performanceBand = overallScore < 45 ? 'low' : overallScore < 70 ? 'medium' : 'high';
+  const xp = overallScore * 12;
+  const nextLevelTarget = Math.min(100, levelMeta.max + 1);
+  const nextLevelXp = nextLevelTarget * 12;
+
+  const missions = [
+    `Complete ${primary.quickWins[0] || 'one guided project'} this week.`,
+    `Close one priority gap: ${missingSkills[0] || 'core fundamentals'}.`,
+    input.targetRole
+      ? `Write one short note on how this week moved you toward ${input.targetRole}.`
+      : 'Write one short note on how this week improved your career direction.',
+  ];
+
+  const boosterPlan =
+    performanceBand === 'low'
+      ? {
+          title: 'Recovery Training Arc',
+          reason: `Your current profile is missing several core skills for ${primary.role}. The priority is stability before speed.`,
+          actions: [
+            `Spend 5 focused sessions on ${missingSkills[0] || 'your weakest foundational skill'}.`,
+            primary.quickWins[0] || 'Finish one simple project that proves your basics.',
+            'Use a daily check-in: what I learned, what I built, what I will repeat tomorrow.',
+            'Ask for feedback once per week and fix one issue immediately.',
+          ],
+        }
+      : performanceBand === 'medium'
+        ? {
+            title: 'Momentum Boost Arc',
+            reason: 'You have a workable base. The next jump comes from consistency and visible output.',
+            actions: [
+              primary.quickWins[0] || 'Finish one high-signal project task.',
+              `Strengthen ${missingSkills[0] || 'one missing skill'} with deliberate practice.`,
+              'Convert your weekly work into one portfolio bullet or public proof.',
+            ],
+          }
+        : {
+            title: 'Advance Mission Arc',
+            reason: 'Your base is strong enough to aim at higher-value execution and opportunity capture.',
+            actions: [
+              primary.quickWins[1] || 'Ship an advanced case study or proof of work.',
+              'Practice interview, presentation, or stakeholder communication once this week.',
+              'Apply your strongest skill in a harder project or real-world challenge.',
+            ],
+          };
+
+  return {
+    overallScore,
+    level: levelMeta.level,
+    progressLabel:
+      performanceBand === 'low'
+        ? 'Low performance detected. Boost mode is active.'
+        : performanceBand === 'medium'
+          ? 'Stable growth detected. Keep stacking visible work.'
+          : 'High momentum detected. Push into stronger opportunities.',
+    xp,
+    nextLevelXp,
+    rewardTitle: levelMeta.rewardTitle,
+    rewardMessage: levelMeta.rewardMessage,
+    performanceBand,
+    activeMissions: missions,
+    hakiTypes,
+    boosterPlan,
+  };
+};
+
 const validateCareerGuidancePayload = (payload) => {
   const errors = [];
 
@@ -207,10 +401,14 @@ const generateCareerGuidance = (input, careers) => {
     riskFlags.push('Goal is not defined; set a 3-6 month target for better direction.');
   }
 
+  const hakiProgressAgent = buildHakiProgress(input, profileTokens, primary, missingSkills, riskFlags);
+
   return {
     timestamp: new Date().toISOString(),
     profileAgent: {
-      summary: `${input.name}, your current strength profile maps best to ${primary.role}. Keep building practical projects weekly to convert skill growth into opportunities.`,
+      summary: input.targetRole
+        ? `${input.name}, your target role is ${input.targetRole}. Based on your current profile, the closest match right now is ${primary.role}. Focus on closing the skill gaps below so you can move steadily toward the career you want to become.`
+        : `${input.name}, your current strength profile maps best to ${primary.role}. Keep building practical projects weekly to convert skill growth into opportunities.`,
       strengths,
       riskFlags,
     },
@@ -229,6 +427,7 @@ const generateCareerGuidance = (input, careers) => {
       missingSkills,
       quickWins: primary.quickWins.slice(0, 3),
     },
+    hakiProgressAgent,
     roadmapAgent: {
       horizon: '12-week growth sprint',
       milestones,

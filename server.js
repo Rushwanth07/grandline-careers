@@ -63,6 +63,19 @@ const sendUnexpectedError = (res, error, message = 'Internal server error') => {
   res.status(500).json({ error: message });
 };
 
+const normalizeStringList = (value) => {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => String(item || '').trim())
+      .filter(Boolean);
+  }
+
+  return String(value || '')
+    .split(/[,\n]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
 const validateProfileUpdate = (payload) => {
   const errors = [];
   const updates = {};
@@ -70,9 +83,29 @@ const validateProfileUpdate = (payload) => {
   const hasDisplayName = Object.prototype.hasOwnProperty.call(payload, 'displayName');
   const hasHakiLevel = Object.prototype.hasOwnProperty.call(payload, 'hakiLevel');
   const hasDevilFruit = Object.prototype.hasOwnProperty.call(payload, 'devilFruit');
+  const hasEducationLevel = Object.prototype.hasOwnProperty.call(payload, 'educationLevel');
+  const hasCurrentStatus = Object.prototype.hasOwnProperty.call(payload, 'currentStatus');
+  const hasTargetRole = Object.prototype.hasOwnProperty.call(payload, 'targetRole');
+  const hasLearningStyle = Object.prototype.hasOwnProperty.call(payload, 'learningStyle');
+  const hasShortTermGoal = Object.prototype.hasOwnProperty.call(payload, 'shortTermGoal');
+  const hasCurrentSkills = Object.prototype.hasOwnProperty.call(payload, 'currentSkills');
+  const hasInterests = Object.prototype.hasOwnProperty.call(payload, 'interests');
+  const hasOnboardingCompleted = Object.prototype.hasOwnProperty.call(payload, 'onboardingCompleted');
 
-  if (!hasDisplayName && !hasHakiLevel && !hasDevilFruit) {
-    errors.push('At least one field is required: displayName, hakiLevel, devilFruit.');
+  if (
+    !hasDisplayName &&
+    !hasHakiLevel &&
+    !hasDevilFruit &&
+    !hasEducationLevel &&
+    !hasCurrentStatus &&
+    !hasTargetRole &&
+    !hasLearningStyle &&
+    !hasShortTermGoal &&
+    !hasCurrentSkills &&
+    !hasInterests &&
+    !hasOnboardingCompleted
+  ) {
+    errors.push('At least one profile field is required.');
   }
 
   if (hasDisplayName) {
@@ -116,6 +149,101 @@ const validateProfileUpdate = (payload) => {
       } else {
         updates.devilFruit = value;
       }
+    }
+  }
+
+  if (hasEducationLevel) {
+    if (typeof payload.educationLevel !== 'string') {
+      errors.push('educationLevel must be a string.');
+    } else {
+      const value = payload.educationLevel.trim();
+      if (value.length < 2 || value.length > 80) {
+        errors.push('educationLevel must be between 2 and 80 characters.');
+      } else {
+        updates.educationLevel = value;
+      }
+    }
+  }
+
+  if (hasCurrentStatus) {
+    if (typeof payload.currentStatus !== 'string') {
+      errors.push('currentStatus must be a string.');
+    } else {
+      const value = payload.currentStatus.trim();
+      if (value.length < 2 || value.length > 80) {
+        errors.push('currentStatus must be between 2 and 80 characters.');
+      } else {
+        updates.currentStatus = value;
+      }
+    }
+  }
+
+  if (hasTargetRole) {
+    if (typeof payload.targetRole !== 'string') {
+      errors.push('targetRole must be a string.');
+    } else {
+      const value = payload.targetRole.trim();
+      if (value.length < 2 || value.length > 120) {
+        errors.push('targetRole must be between 2 and 120 characters.');
+      } else {
+        updates.targetRole = value;
+      }
+    }
+  }
+
+  if (hasLearningStyle) {
+    if (typeof payload.learningStyle !== 'string') {
+      errors.push('learningStyle must be a string.');
+    } else {
+      const value = payload.learningStyle.trim();
+      if (value.length < 2 || value.length > 80) {
+        errors.push('learningStyle must be between 2 and 80 characters.');
+      } else {
+        updates.learningStyle = value;
+      }
+    }
+  }
+
+  if (hasShortTermGoal) {
+    if (typeof payload.shortTermGoal !== 'string') {
+      errors.push('shortTermGoal must be a string.');
+    } else {
+      const value = payload.shortTermGoal.trim();
+      if (value.length < 10 || value.length > 240) {
+        errors.push('shortTermGoal must be between 10 and 240 characters.');
+      } else {
+        updates.shortTermGoal = value;
+      }
+    }
+  }
+
+  if (hasCurrentSkills) {
+    const value = normalizeStringList(payload.currentSkills);
+    if (value.length === 0 || value.length > 25) {
+      errors.push('currentSkills must include between 1 and 25 items.');
+    } else if (value.some((item) => item.length > 60)) {
+      errors.push('Each currentSkills entry must be 60 characters or less.');
+    } else {
+      updates.currentSkills = value;
+    }
+  }
+
+  if (hasInterests) {
+    const value = normalizeStringList(payload.interests);
+    if (value.length === 0 || value.length > 25) {
+      errors.push('interests must include between 1 and 25 items.');
+    } else if (value.some((item) => item.length > 60)) {
+      errors.push('Each interests entry must be 60 characters or less.');
+    } else {
+      updates.interests = value;
+    }
+  }
+
+  if (hasOnboardingCompleted) {
+    if (typeof payload.onboardingCompleted !== 'boolean') {
+      errors.push('onboardingCompleted must be a boolean.');
+    } else {
+      updates.onboardingCompleted = payload.onboardingCompleted;
     }
   }
 
@@ -276,19 +404,25 @@ app.post('/api/profile', authenticateUser, async (req, res) => {
       return res.status(400).json({ error: 'Invalid profile payload', details: validation.errors });
     }
 
+    const profilePayload = {
+      ...validation.updates,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
     await admin
       .firestore()
       .collection('users')
       .doc(req.user.uid)
-      .set(
-        {
-          ...validation.updates,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true },
-      );
+      .set(profilePayload, { merge: true });
 
-    return res.json({ success: true, message: "Profile updated! You're ready to set sail!" });
+    return res.json({
+      success: true,
+      message: "Profile updated! You're ready to set sail!",
+      profile: {
+        ...validation.updates,
+        uid: req.user.uid,
+      },
+    });
   } catch (error) {
     return sendUnexpectedError(res, error);
   }
